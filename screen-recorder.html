@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Recorder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            margin-top: 20px;
+        }
+
+        .controls {
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        button.stop {
+            background-color: #f44336;
+        }
+
+        video {
+            max-width: 100%;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+        }
+
+        .download-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Screen Recorder</h1>
+        <div class="controls">
+            <button id="startBtn">Start Recording</button>
+            <button id="stopBtn" class="stop" disabled>Stop Recording</button>
+        </div>
+        <video id="preview" autoplay muted></video>
+        <div id="downloadContainer"></div>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const preview = document.getElementById('preview');
+        const downloadContainer = document.getElementById('downloadContainer');
+
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                // Request screen capture
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        cursor: "always"
+                    },
+                    audio: false
+                });
+
+                // Display preview
+                preview.srcObject = stream;
+
+                // Create MediaRecorder
+                mediaRecorder = new MediaRecorder(stream);
+
+                // Collect data
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                // Handle recording stop
+                mediaRecorder.onstop = () => {
+                    // Create blob from recorded chunks
+                    const blob = new Blob(recordedChunks, {
+                        type: 'video/webm'
+                    });
+
+                    // Create download link
+                    const url = URL.createObjectURL(blob);
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = url;
+                    downloadLink.download = 'screen-recording.webm';
+                    downloadLink.textContent = 'Download Recording';
+                    downloadLink.className = 'download-link';
+
+                    // Clear previous downloads and add new link
+                    downloadContainer.innerHTML = '';
+                    downloadContainer.appendChild(downloadLink);
+
+                    // Stop all tracks
+                    stream.getTracks().forEach(track => track.stop());
+                    preview.srcObject = null;
+                };
+
+                // Start recording
+                mediaRecorder.start();
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            } catch (err) {
+                console.error("Error: " + err);
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            mediaRecorder.stop();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        });
+    </script>
+</body>
+</html>
